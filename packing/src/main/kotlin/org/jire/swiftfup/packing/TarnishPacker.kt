@@ -10,11 +10,11 @@ import java.nio.file.Path
 
 object TarnishPacker {
 
-    private const val CACHE_TO_PATH = "../server/cache/"
-    private const val CACHE_FROM_PATH = "data/osrs/cache218/"
+    private const val CACHE_TO_PATH = "server/cache/"
+    private const val CACHE_FROM_PATH = "packing/data/osrs/cache218/"
 
     private const val SPEC_BAR_MODELS = true
-    private const val SOUNDS = false
+    private const val SOUNDS = true
 
     private const val ROATZ_DATA = false
 

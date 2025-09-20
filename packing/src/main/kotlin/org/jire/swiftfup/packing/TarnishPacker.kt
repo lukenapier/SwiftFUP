@@ -33,6 +33,11 @@ object TarnishPacker {
         val cacheTo = CacheLibrary.create(cachePath)
 
         if (SOUNDS) {
+            if (true) {
+                println(cacheTo.data(SOUNDS_INDEX, 2720)!!.size)
+                return
+            }
+
             sounds(cachePath, cacheTo)
 
             cacheTo.update()
@@ -112,12 +117,19 @@ object TarnishPacker {
     private const val SOUNDS_INDEX = 6
 
     private fun sounds(cachePath: String, cacheTo: CacheLibrary) {
-        val index = if (cacheTo.exists(SOUNDS_INDEX)) {
-            cacheTo.index(SOUNDS_INDEX)
-        } else {
-            cacheTo.createIndex().also { cacheTo.reload() }
+        if (false) {
+            cacheTo.createIndex()
+            /*val index = cacheTo.index(SOUNDS_INDEX)
+            index.cache()
+            for (archive in index.archives()) {
+                cacheTo.remove(SOUNDS_INDEX, archive.id)
+                println("removed archive ${archive.id}")
+            }
+            index.update()*/
+            return
         }
-        val indexId = index.id
+
+        val index = cacheTo.index(SOUNDS_INDEX)
 
         val indexBuf = Unpooled.buffer()
         indexBuf.writeShort(0)
@@ -130,7 +142,7 @@ object TarnishPacker {
             val data = soundFile.readBytes()
 
             indexBuf.writeShort(id)
-            cacheTo.put(indexId, id, data)
+            cacheTo.put(SOUNDS_INDEX, id, data)
             amount++
         }
 

@@ -2,6 +2,7 @@ package org.jire.swiftfup.packing
 
 import com.displee.cache.CacheLibrary
 import com.displee.cache.index.Index317
+import com.displee.cache.index.archive.Archive
 import io.netty.buffer.Unpooled
 import org.jire.swiftfup.packing.roatz.RoatzPacker
 import org.jire.swiftfup.packing.roatz.roatzCustomRegionIds
@@ -33,12 +34,7 @@ object TarnishPacker {
         val cacheTo = CacheLibrary.create(cachePath)
 
         if (SOUNDS) {
-            if (true) {
-                println(cacheTo.data(SOUNDS_INDEX, 2720)!!.size)
-                return
-            }
-
-            sounds(cachePath, cacheTo)
+            sounds(cacheFrom, cacheTo)
 
             cacheTo.update()
             cacheTo.close()
@@ -115,45 +111,62 @@ object TarnishPacker {
     }
 
     private const val SOUNDS_INDEX = 6
+    private const val OSRS_SOUNDS_INDEX = 14
 
-    private fun sounds(cachePath: String, cacheTo: CacheLibrary) {
-        if (false) {
-            cacheTo.createIndex()
-            /*val index = cacheTo.index(SOUNDS_INDEX)
-            index.cache()
-            for (archive in index.archives()) {
-                cacheTo.remove(SOUNDS_INDEX, archive.id)
-                println("removed archive ${archive.id}")
+    private fun sounds(cacheFrom: CacheLibrary, cacheTo: CacheLibrary) {
+        require(cacheFrom.exists(OSRS_SOUNDS_INDEX)) { "Cache218 is missing OSRS sounds index $OSRS_SOUNDS_INDEX" }
+        require(cacheTo.exists(SOUNDS_INDEX)) { "Target cache is missing sound index $SOUNDS_INDEX" }
+
+        val indexFrom = cacheFrom.index(OSRS_SOUNDS_INDEX)
+        indexFrom.cache()
+
+        val indexTo = cacheTo.index(SOUNDS_INDEX)
+        indexTo.clear()
+        indexTo.flag()
+
+        var archiveCount = 0
+        var fileCount = 0
+        var largestFileSize = 0
+        var highestArchiveId = -1
+        var highestFileId = -1
+
+        for (archive in indexFrom.archives()) {
+            if (!archive.containsData()) continue
+
+            val archiveCopy = Archive(archive)
+            indexTo.add(archiveCopy)
+
+            val files = archiveCopy.files()
+            fileCount += files.size
+
+            for (file in files) {
+                val dataSize = file.data?.size ?: 0
+                if (dataSize > largestFileSize) {
+                    largestFileSize = dataSize
+                }
+                if (file.id > highestFileId) {
+                    highestFileId = file.id
+                }
             }
-            index.update()*/
-            return
+
+            if (archiveCopy.id > highestArchiveId) {
+                highestArchiveId = archiveCopy.id
+            }
+
+            archiveCount++
         }
 
-        val index = cacheTo.index(SOUNDS_INDEX)
+        indexTo.version = indexFrom.version
+        indexTo.revision = indexFrom.revision
+        indexTo.crc = indexFrom.crc
+        indexTo.whirlpool = indexFrom.whirlpool
 
-        val indexBuf = Unpooled.buffer()
-        indexBuf.writeShort(0)
+        indexTo.update()
 
-        var amount = 0
-        for (soundFile in File("../packing/data/tarnishps/sounds/").listFiles()!!) {
-            if (soundFile.extension != "wav") continue
-
-            val id = soundFile.nameWithoutExtension.toIntOrNull() ?: continue
-            val data = soundFile.readBytes()
-
-            indexBuf.writeShort(id)
-            cacheTo.put(SOUNDS_INDEX, id, data)
-            amount++
-        }
-
-        indexBuf.setShort(0, amount)
-
-        val indexBufArray = ByteArray(indexBuf.writerIndex())
-        indexBuf.readBytes(indexBufArray)
-
-        index.update()
-
-        println("Packed $amount sounds")
+        println(
+            "Packed $fileCount OSRS sounds across $archiveCount archives " +
+                "(highest archive=$highestArchiveId, highest file=$highestFileId, largest file=${largestFileSize} bytes)"
+        )
     }
 
     private fun models(cacheFrom: CacheLibrary, cacheTo: CacheLibrary) {
